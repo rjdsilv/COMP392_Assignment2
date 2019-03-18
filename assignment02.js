@@ -17,6 +17,17 @@ const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerH
 const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
 const container = new THREE.Object3D();
 
+// Game variable declarations.
+const TABLE_Y = -25;
+const TABLE_H = 3.75;
+const gameBoxes = []
+
+// DAT.GUI Controls.
+const controls = {
+    filename: 'game01',
+    port: 5500
+};
+
 
 /**
  * Initialization function, which will initialize all the necessary components for the application.
@@ -37,7 +48,7 @@ function init() {
  * an ambient light, a directional light, and an hemisphere light set up.
  */
 function setupCameraAndLight() {
-    camera.position.set(0, 30, 85);
+    camera.position.set(0, 30, 90);
     camera.lookAt(scene.position);
 
     /**
@@ -52,7 +63,7 @@ function setupCameraAndLight() {
      */
     const createDirectionalLight = () => {
         let directionalLight = new THREE.DirectionalLight(0xffffff);
-        directionalLight.position.set(20, 35, 50);
+        directionalLight.position.set(-30, 35, 35);
         directionalLight.castShadow = true;
         directionalLight.target = scene;
         directionalLight.shadow.camera.near = 0.1;
@@ -83,20 +94,74 @@ function setupCameraAndLight() {
 function createGeometry() {
     scene.add(new THREE.AxesHelper(100));
     let table = new THREE.Mesh(
-        new THREE.CubeGeometry(150, 50, 3.5),
+        new THREE.CubeGeometry(150, 50, TABLE_H),
         new THREE.MeshLambertMaterial({ color: 0xaadd00, map: new THREE.TextureLoader().load('assets/textures/table.jpg') })
-        );
+    );
     table.receiveShadow = true;
     table.rotation.x = -Math.PI * 0.5;
-    table.position.y = -25;
+    table.position.y = TABLE_Y;
     scene.add(table);
+}
+
+/**
+ * Function that will create the box based on the given data.
+ * 
+ * @param {*} boxData 
+ */
+function createBox(boxData) {
+    let box = new THREE.Mesh(
+        new THREE.CubeGeometry(boxData.size, boxData.size, boxData.size),
+        new THREE.MeshStandardMaterial({ color: parseInt(boxData.color) })
+    );
+    box.castShadow = true;
+    box.receiveShadow = true;
+    box.position.set(boxData.posX, boxData.size / 2 + TABLE_Y + TABLE_H / 2, boxData.size / 2);
+    return box;
+}
+
+function createGame(gameData) {
+    for (boxData of gameData) {
+        const box = createBox(boxData);
+        gameBoxes.push(box);
+        scene.add(box);
+    }
 }
 
 /**
  * Function that will create and set up the GUI controls.
  */
 function setupDatGui() {
+    const gameFiles = {
+        'Game 1': 'game01',
+        'Game 2': 'game02',
+        'Game 3': 'game03',
+        'Game 4': 'game04',
+        'Game 5': 'game05'
+    };
 
+    let gui = new dat.GUI();
+    gui.add(controls, 'filename', gameFiles).name('Game Selection');
+    gui.add(controls, 'port', 5500, 5599).step(1).name('Port');
+}
+
+/**
+ * Reads the JSON file represented by filename on the given port to create the game.
+ * 
+ * @param {*} port     The port to be used.
+ * @param {*} filename The file name to be used.
+ */
+function readFile(port, filename) {
+    let url = `http://localhost:${port}/assets/games/${filename}.json`;
+    //console.log(url); //debugging code
+    let request = new XMLHttpRequest();
+    request.open('GET', url);
+    request.responseType = 'text'; //try text if this doesn’t work
+    request.send();
+    request.onload = () => {
+        //console.log(boxes); //debugging code
+        createGame(JSON.parse(request.responseText));
+        //createGame(JSON.parse(data)); //convert text to json
+    }
 }
 
 /**
@@ -131,5 +196,6 @@ window.onload = () => {
     setupCameraAndLight();
     createGeometry();
     setupDatGui();
+    readFile(controls.port, controls.filename);
     render();
 }

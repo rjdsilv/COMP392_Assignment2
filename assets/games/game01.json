@@ -1,0 +1,25 @@
+[{
+    "color": "0xff4d4d",
+    "size": 10,
+    "posX": -37.5
+}, {
+    "color": "0xff4d4d",
+    "size": 10,
+    "posX": -22.5
+}, {
+    "color": "0x4d4dff",
+    "size": 10,
+    "posX": -7.5
+}, {
+    "color": "0x4d4dff",
+    "size": 10,
+    "posX": 7.5
+}, {
+    "color": "0xff4d4d",
+    "size": 10,
+    "posX": 22.5
+}, {
+    "color": "0xff4d4d",
+    "size": 10,
+    "posX": 37.5
+}]
