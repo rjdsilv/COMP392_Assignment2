@@ -1,0 +1,18 @@
+{
+    "material": {
+        "color": "0xffffff",
+        "transparent": true,
+        "opacity": 1
+    },
+    "box": {
+        "width": 10,
+        "height": 10,
+        "depth": 10
+    },
+    "physics": {
+        "castShadow": true,
+        "receiveShadow": true,
+        "friction": 0.2,
+        "restitution": 0.3
+    }
+}

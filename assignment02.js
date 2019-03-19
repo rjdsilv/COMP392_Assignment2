@@ -9,6 +9,11 @@
  */
 
 /**
+ * Physijs declaration
+ */
+Physijs.scripts.worker = '/libs/physiji_worker.js';
+
+/**
  * THREE.js controls declaration.
  */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -20,12 +25,15 @@ const container = new THREE.Object3D();
 // Game variable declarations.
 const TABLE_Y = -25;
 const TABLE_H = 3.75;
-const gameBoxes = []
+const gameBoxes = [];
 
 // DAT.GUI Controls.
 const controls = {
     filename: 'game01',
-    port: 5500
+    port: 5500,
+    load: function () {
+        readFile(controls.port, controls.filename);
+    }
 };
 
 
@@ -106,7 +114,7 @@ function createGeometry() {
 /**
  * Function that will create the box based on the given data.
  * 
- * @param {*} boxData 
+ * @param {*} boxData
  */
 function createBox(boxData) {
     let box = new THREE.Mesh(
@@ -117,6 +125,22 @@ function createBox(boxData) {
     box.receiveShadow = true;
     box.position.set(boxData.posX, boxData.size / 2 + TABLE_Y + TABLE_H / 2, boxData.size / 2);
     return box;
+}
+
+/**
+ * Function that will create physic object
+ * 
+ * @param {*} data - Data from JSON file
+ */
+function createPhysicBox(gameData) {
+    let blockGeometry = new THREE.BoxGeometry(gameData.box.width, gameData.box.height, gameData.box.depth);
+    let blockMaterial = Physijs.createMaterial(new THREE.MeshStandardMaterial(
+        { color: gameData.material.color, transparent: gameData.material.transparent, opacity: gameData.material.opacity }), gameData.material.friction, gameData.material.restitution);
+    let block = new Physijs.BoxMesh(blockGeometry, blockMaterial, data.mass);
+    block.position.set(data.x, data.y, data.z);
+    block.castShadow = data.castShadow;
+    block.receiveShadow = data.receiveShadow;
+    return block;
 }
 
 function createGame(gameData) {
@@ -140,8 +164,9 @@ function setupDatGui() {
     };
 
     let gui = new dat.GUI();
-    gui.add(controls, 'filename', gameFiles).name('Game Selection');
-    gui.add(controls, 'port', 5500, 5599).step(1).name('Port');
+    gui.add(controls, 'filename', gameFiles).name('Game Selection').onChange((e) => { controls.filename = e; });
+    gui.add(controls, 'port', 5500, 5599).step(1).name('Port').onChange((e) => { controls.port = e; });
+    gui.add(controls, 'load').name('Load');
 }
 
 /**
@@ -152,15 +177,12 @@ function setupDatGui() {
  */
 function readFile(port, filename) {
     let url = `http://localhost:${port}/assets/games/${filename}.json`;
-    //console.log(url); //debugging code
     let request = new XMLHttpRequest();
     request.open('GET', url);
     request.responseType = 'text'; //try text if this doesn’t work
     request.send();
     request.onload = () => {
-        //console.log(boxes); //debugging code
         createGame(JSON.parse(request.responseText));
-        //createGame(JSON.parse(data)); //convert text to json
     }
 }
 
