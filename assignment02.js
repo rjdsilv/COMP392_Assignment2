@@ -37,13 +37,12 @@ const TABLE_H = 3.75;
 const FRICTION = 0.3;
 const RESTITUTION = 0.7;
 const MASS = 10;
-const gameBoxes = []
+let gameBoxes = [];
+let table;
 
-// DAT.GUI Controls.
-const controls = {
-    filename: 'game01',
-    port: 5500
-};
+// GUI variables;
+let filename = 'game01';
+let port = 8080;
 
 
 /**
@@ -118,7 +117,7 @@ function createGeometry() {
         color: 0xaadd00,
         map: new THREE.TextureLoader().load('assets/textures/table.jpg')
     }), FRICTION, RESTITUTION);
-    const table = new Physijs.BoxMesh(tableGeom, tableMat, 0);
+    table = new Physijs.BoxMesh(tableGeom, tableMat, 0);
     table.receiveShadow = true;
     table.rotation.x = -Math.PI * 0.5;
     table.position.y = TABLE_Y;
@@ -142,7 +141,18 @@ function createBox(boxData, index) {
     return box;
 }
 
+/**
+ * function that will create the game with the given gameData.
+ * 
+ * @param {*} gameData The game data to be used in world construction.
+ */
 function createGame(gameData) {
+    // Clear the previous game data.
+    for (box of gameBoxes) {
+        scene.remove(box);
+    }
+    gameBoxes = [];
+
     for (let i = 0; i < gameData.length; i++) {
         for (boxData of gameData[i]) {
             const box = createBox(boxData, i);
@@ -150,6 +160,38 @@ function createGame(gameData) {
             scene.add(box);
         }
     }
+}
+
+/**
+ * Function that will remove boxes that felt from the table.
+ */
+function removeFallenBoxes() {
+    for (box of gameBoxes) {
+        if (box.position.y < table.position.y - 10) {
+            gameBoxes = gameBoxes.filter((e) => e != box);
+            scene.remove(box);
+        }
+    }
+}
+
+/**
+ * Function that will detect what block was selected and remove it from the scene.
+ * 
+ * @param {*} event The event that occured.
+ */
+function mouseDownHandler(event) {
+    let pos = new THREE.Vector3(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1,
+        0.5
+    );
+    let vector = pos.unproject(camera);
+    let raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+    let intersects = raycaster.intersectObjects(gameBoxes);
+    intersects.forEach((obj) => {
+        gameBoxes = gameBoxes.filter((e) => e != obj.object);
+        scene.remove(obj.object);
+    });
 }
 
 /**
@@ -163,10 +205,17 @@ function setupDatGui() {
         'Game 4': 'game04',
         'Game 5': 'game05'
     };
+    const ports = [5500, 8080]
+
+    // DAT.GUI Controls.
+    const controls = new function () {
+        this.filename = filename;
+        this.port = port;
+    };
 
     let gui = new dat.GUI();
-    gui.add(controls, 'filename', gameFiles).name('Game Selection');
-    gui.add(controls, 'port', 5500, 5599).step(1).name('Port');
+    gui.add(controls, 'filename', gameFiles).name('Game Selection').onChange((e) => { filename = e; readFile(port, filename); });
+    gui.add(controls, 'port', ports).name('Port').onChange((e) => { port = parseInt(e); readFile(port, filename); });
 }
 
 /**
@@ -176,16 +225,14 @@ function setupDatGui() {
  * @param {*} filename The file name to be used.
  */
 function readFile(port, filename) {
-    let url = `http://localhost:${port}/assets/games/${filename}.json`;
+    let url = `http://127.0.0.1:${port}/assets/games/${filename}.json`;
     //console.log(url); //debugging code
     let request = new XMLHttpRequest();
     request.open('GET', url);
     request.responseType = 'text'; //try text if this doesn’t work
     request.send();
     request.onload = () => {
-        //console.log(boxes); //debugging code
         createGame(JSON.parse(request.responseText));
-        //createGame(JSON.parse(data)); //convert text to json
     }
 }
 
@@ -208,9 +255,12 @@ function render() {
     //     }
     // }
 
+    // removes fallen objects from the scene.
+    removeFallenBoxes();
+
     // Renders the scene
     renderer.render(scene, camera);
-    scene.simulate(undefined, 1);
+    scene.simulate();
     requestAnimationFrame(render);
 }
 
@@ -222,6 +272,7 @@ window.onload = () => {
     setupCameraAndLight();
     createGeometry();
     setupDatGui();
-    readFile(controls.port, controls.filename);
+    readFile(port, filename);
+    window.addEventListener('mousedown', mouseDownHandler, false);
     render();
 }

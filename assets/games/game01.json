@@ -82,36 +82,36 @@
     ],
     [
         {
-            "color": "0x80ff80",
+            "color": "0xd980ff",
             "size": 10,
             "posX": -15
         },
         {
-            "color": "0x80ff80",
+            "color": "0xd980ff",
             "size": 10,
             "posX": 0
         },
         {
-            "color": "0x80ff80",
+            "color": "0xd980ff",
             "size": 10,
             "posX": 15
         }
     ],
     [
         {
-            "color": "0xffc04d",
+            "color": "0x80ff80",
             "size": 10,
             "posX": -7.5
         },
         {
-            "color": "0xffc04d",
+            "color": "0x80ff80",
             "size": 10,
             "posX": 7.5
         }
     ],
     [
         {
-            "color": "0xd980ff",
+            "color": "0xffc04d",
             "size": 10,
             "posX": 0
         }
