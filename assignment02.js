@@ -56,7 +56,7 @@ function init() {
     renderer.shadowMap.enabled = true;
 
     // Sets the gravity for the scene.
-    scene.setGravity(new THREE.Vector3(0, -10, 0));
+    scene.setGravity(new THREE.Vector3(0, -30, 0));
 
     // Adding the renderer to the DOM.
     document.body.appendChild(renderer.domElement);
@@ -82,7 +82,7 @@ function setupCameraAndLight() {
      */
     const createDirectionalLight = () => {
         let directionalLight = new THREE.DirectionalLight(0xffffff);
-        directionalLight.position.set(-30, 35, 35);
+        directionalLight.position.set(-95, 45, 75);
         directionalLight.castShadow = true;
         directionalLight.target = scene;
         directionalLight.shadow.camera.near = 0.1;
@@ -133,11 +133,13 @@ function createBox(boxData, index) {
     const boxGeom = new THREE.CubeGeometry(boxData.size, boxData.size, boxData.size);
     const boxMat = Physijs.createMaterial(new THREE.MeshStandardMaterial({
         color: parseInt(boxData.color),
+        transparent: true,
+        opacity: 0.9
     }), FRICTION, RESTITUTION);
     const box = new Physijs.BoxMesh(boxGeom, boxMat, MASS);
     box.castShadow = true;
     box.receiveShadow = true;
-    box.position.set(boxData.posX, (index + 1) * boxData.size / 2 + TABLE_Y + TABLE_H / 2 + index * boxData.size / 2, boxData.size / 2);
+    box.position.set(boxData.posX, (index + 1) * boxData.size / 2 + TABLE_Y + TABLE_H / 2 + index * boxData.size / 2, boxData.posZ);
     return box;
 }
 
@@ -167,10 +169,21 @@ function createGame(gameData) {
  */
 function removeFallenBoxes() {
     for (box of gameBoxes) {
-        if (box.position.y < table.position.y - 10) {
+        if (box.position.y < table.position.y - 20) {
             gameBoxes = gameBoxes.filter((e) => e != box);
             scene.remove(box);
         }
+    }
+}
+
+/**
+ * Function that for each frame will mark the remaining boxes on the screen as dirty so
+ * the physics library knows their current state.
+ */
+function markRemainingBoxesAsDirty() {
+    for (box of gameBoxes) {
+        box.__dirtyRotation = true;
+        box.__dirtyPosition = true;
     }
 }
 
@@ -211,11 +224,15 @@ function setupDatGui() {
     const controls = new function () {
         this.filename = filename;
         this.port = port;
+        this.resetGame = () => {
+            readFile(port, filename);
+        }
     };
 
     let gui = new dat.GUI();
     gui.add(controls, 'filename', gameFiles).name('Game Selection').onChange((e) => { filename = e; readFile(port, filename); });
     gui.add(controls, 'port', ports).name('Port').onChange((e) => { port = parseInt(e); readFile(port, filename); });
+    gui.add(controls, 'resetGame').name('Reset Game');
 }
 
 /**
@@ -257,6 +274,9 @@ function render() {
 
     // removes fallen objects from the scene.
     removeFallenBoxes();
+
+    // Marks the remaining boxes as dirty
+    markRemainingBoxesAsDirty();
 
     // Renders the scene
     renderer.render(scene, camera);
