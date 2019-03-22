@@ -1,3 +1,9 @@
+/// <reference path="libs/three.min.js" />
+/// <reference path="libs/physijs_worker.js" />
+/// <reference path="libs/ammo.js" />
+/// <reference path="libs/dat.gui.min.js" />
+/// <reference path="libs/orbitcontrols.js" />
+
 /**
  * @author Rodrigo da Silva
  * @author Jalpen Desai
@@ -9,17 +15,28 @@
  */
 
 /**
+ * Setting Phyisics
+ */
+Physijs.scripts.worker = 'libs/physijs_worker.js';
+Physijs.scripts.ammo = 'ammo.js';
+
+/**
  * THREE.js controls declaration.
  */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1.0, 1000);
 const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
 const container = new THREE.Object3D();
 
+// Physics Scene.
+const scene = new Physijs.Scene({ reportsize: 50, fixedTimeStep: 1 / 60 });
+
 // Game variable declarations.
 const TABLE_Y = -25;
 const TABLE_H = 3.75;
+const FRICTION = 0.3;
+const RESTITUTION = 0.7;
+const MASS = 10;
 const gameBoxes = []
 
 // DAT.GUI Controls.
@@ -38,6 +55,9 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x004400);
     renderer.shadowMap.enabled = true;
+
+    // Sets the gravity for the scene.
+    scene.setGravity(new THREE.Vector3(0, -10, 0));
 
     // Adding the renderer to the DOM.
     document.body.appendChild(renderer.domElement);
@@ -93,10 +113,12 @@ function setupCameraAndLight() {
  */
 function createGeometry() {
     scene.add(new THREE.AxesHelper(100));
-    let table = new THREE.Mesh(
-        new THREE.CubeGeometry(150, 50, TABLE_H),
-        new THREE.MeshLambertMaterial({ color: 0xaadd00, map: new THREE.TextureLoader().load('assets/textures/table.jpg') })
-    );
+    const tableGeom = new THREE.CubeGeometry(150, 50, TABLE_H);
+    const tableMat = Physijs.createMaterial(new THREE.MeshStandardMaterial({
+        color: 0xaadd00,
+        map: new THREE.TextureLoader().load('assets/textures/table.jpg')
+    }), FRICTION, RESTITUTION);
+    const table = new Physijs.BoxMesh(tableGeom, tableMat, 0);
     table.receiveShadow = true;
     table.rotation.x = -Math.PI * 0.5;
     table.position.y = TABLE_Y;
@@ -108,22 +130,25 @@ function createGeometry() {
  * 
  * @param {*} boxData 
  */
-function createBox(boxData) {
-    let box = new THREE.Mesh(
-        new THREE.CubeGeometry(boxData.size, boxData.size, boxData.size),
-        new THREE.MeshStandardMaterial({ color: parseInt(boxData.color) })
-    );
+function createBox(boxData, index) {
+    const boxGeom = new THREE.CubeGeometry(boxData.size, boxData.size, boxData.size);
+    const boxMat = Physijs.createMaterial(new THREE.MeshStandardMaterial({
+        color: parseInt(boxData.color),
+    }), FRICTION, RESTITUTION);
+    const box = new Physijs.BoxMesh(boxGeom, boxMat, MASS);
     box.castShadow = true;
     box.receiveShadow = true;
-    box.position.set(boxData.posX, boxData.size / 2 + TABLE_Y + TABLE_H / 2, boxData.size / 2);
+    box.position.set(boxData.posX, (index + 1) * boxData.size / 2 + TABLE_Y + TABLE_H / 2 + index * boxData.size / 2, boxData.size / 2);
     return box;
 }
 
 function createGame(gameData) {
-    for (boxData of gameData) {
-        const box = createBox(boxData);
-        gameBoxes.push(box);
-        scene.add(box);
+    for (let i = 0; i < gameData.length; i++) {
+        for (boxData of gameData[i]) {
+            const box = createBox(boxData, i);
+            gameBoxes.push(box);
+            scene.add(box);
+        }
     }
 }
 
@@ -185,6 +210,7 @@ function render() {
 
     // Renders the scene
     renderer.render(scene, camera);
+    scene.simulate(undefined, 1);
     requestAnimationFrame(render);
 }
 
