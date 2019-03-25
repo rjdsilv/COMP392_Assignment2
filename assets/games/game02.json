@@ -1,18 +1,68 @@
-{
-    "material": {
-        "color": "0xffffff",
-        "transparent": true,
-        "opacity": 1
-    },
-    "box": {
-        "width": 10,
-        "height": 10,
-        "depth": 10
-    },
-    "physics": {
-        "castShadow": true,
-        "receiveShadow": true,
-        "friction": 0.2,
-        "restitution": 0.3
-    }
-}
+[
+    [
+        {
+            "color": "0xd980ff",
+            "size": 10,
+            "posX": -15,
+            "posZ": 2.5
+        },
+        {
+            "color": "0xd980ff",
+            "size": 10,
+            "posX": 0,
+            "posZ": 2.5
+        },
+        {
+            "color": "0xd980ff",
+            "size": 10,
+            "posX": 15,
+            "posZ": 2.5
+        }
+    ],
+    [
+        {
+            "color": "0x80ff80",
+            "size": 10,
+            "posX": -22.5,
+            "posZ": 2.5
+        },
+        {
+            "color": "0x80ff80",
+            "size": 10,
+            "posX": -7.5,
+            "posZ": 2.5
+        },
+        {
+            "color": "0x80ff80",
+            "size": 10,
+            "posX": 7.5,
+            "posZ": 2.5
+        },
+        {
+            "color": "0x80ff80",
+            "size": 10,
+            "posX": 22.5,
+            "posZ": 2.5
+        }
+    ],
+    [
+        {
+            "color": "0xffc04d",
+            "size": 10,
+            "posX": -15,
+            "posZ": 2.5
+        },
+        {
+            "color": "0xffc04d",
+            "size": 10,
+            "posX": 0,
+            "posZ": 2.5
+        },
+        {
+            "color": "0xffc04d",
+            "size": 10,
+            "posX": 15,
+            "posZ": 2.5
+        }
+   ]
+]
