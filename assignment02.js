@@ -127,7 +127,7 @@ function createGeometry() {
 /**
  * Function that will create the box based on the given data.
  * 
- * @param {*} boxData 
+ * @param {*} boxData
  */
 function createBox(boxData, index) {
     const boxGeom = new THREE.CubeGeometry(boxData.size, boxData.size, boxData.size);
