@@ -28,22 +28,26 @@ const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerH
 const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
 const container = new THREE.Object3D();
 
-// Physics Scene.
+// Physics Scene
 const scene = new Physijs.Scene({ reportsize: 50, fixedTimeStep: 1 / 60 });
 
-// Game variable declarations.
+// Game variable declarations
 const TABLE_Y = -25;
 const TABLE_H = 3.75;
 const FRICTION = 0.3;
 const RESTITUTION = 0.7;
 const MASS = 10;
+const IMPULSE_INTERVAL = 1000; // in seconds
 let gameBoxes = [];
 let table;
 
-// GUI variables;
+// GUI variables
 let filename = 'game01';
-let port = 8080;
+let port = 5500;
 
+// Scoreboard variables
+let scoreBoard;
+let currentScore = 0;
 
 /**
  * Initialization function, which will initialize all the necessary components for the application.
@@ -130,17 +134,42 @@ function createGeometry() {
  * @param {*} boxData
  */
 function createBox(boxData, index) {
-    const boxGeom = new THREE.CubeGeometry(boxData.size, boxData.size, boxData.size);
-    const boxMat = Physijs.createMaterial(new THREE.MeshStandardMaterial({
-        color: parseInt(boxData.color),
-        transparent: true,
-        opacity: 0.9
-    }), FRICTION, RESTITUTION);
-    const box = new Physijs.BoxMesh(boxGeom, boxMat, MASS);
-    box.castShadow = true;
-    box.receiveShadow = true;
-    box.position.set(boxData.posX, (index + 1) * boxData.size / 2 + TABLE_Y + TABLE_H / 2 + index * boxData.size / 2, boxData.posZ);
-    return box;
+    // Return a box object
+    return new function () {
+        const boxGeom = new THREE.CubeGeometry(boxData.size, boxData.size, boxData.size);
+        const boxMat = Physijs.createMaterial(new THREE.MeshStandardMaterial({
+            color: parseInt(boxData.color),
+            transparent: true,
+            opacity: 0.9
+        }), FRICTION, RESTITUTION);
+        this.mesh = new Physijs.BoxMesh(boxGeom, boxMat, MASS);
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
+        this.mesh.position.set(boxData.posX, (index + 1) * boxData.size / 2 + TABLE_Y + TABLE_H / 2 + index * boxData.size / 2, boxData.posZ);
+        // Apply random upward force.
+        this.mesh.impulse = () => {
+            // Only apply impulse if box is touching table.
+            if (this.mesh.position.y - boxData.size / 2 <= table.position.y + TABLE_H / 2 + 0.1) {
+                // Apply random color.
+                this.mesh.material.color = new THREE.Color(Math.random(), Math.random(), Math.random());
+                // Apply random upward force
+                this.mesh.applyCentralImpulse(new THREE.Vector3(0, Math.random() * 1000, 0));
+            }
+        }
+        // Impulse handle
+        let impulseHandle;
+        // Start impulse
+        this.mesh.startImpulse = (interval) => {
+            this.mesh.stopImpulse();
+            impulseHandle = setInterval(() => {
+                this.mesh.impulse();
+            }, interval);
+        }
+        // Stop impulse
+        this.mesh.stopImpulse = () => {
+            clearInterval(impulseHandle);
+        };
+    }
 }
 
 /**
@@ -151,17 +180,51 @@ function createBox(boxData, index) {
 function createGame(gameData) {
     // Clear the previous game data.
     for (box of gameBoxes) {
+        // Clear impulse timer.
+        box.stopImpulse();
         scene.remove(box);
     }
     gameBoxes = [];
+    currentScore = 0;
 
     for (let i = 0; i < gameData.length; i++) {
         for (boxData of gameData[i]) {
             const box = createBox(boxData, i);
-            gameBoxes.push(box);
-            scene.add(box);
+            // Start impulse timer with IMPULSE_INTERVAL.
+            box.mesh.startImpulse(IMPULSE_INTERVAL);
+            // Add box object to gameBoxes.
+            gameBoxes.push(box.mesh);
+            // Add box mesh to the scene.
+            scene.add(box.mesh);
         }
     }
+
+    setupScoreBoard();
+}
+
+/**
+ * Function that add a scoreboard to canvas.
+ */
+function setupScoreBoard() {
+    scoreBoard = document.getElementById("scoreBoard");
+    if (!scoreBoard) {
+        scoreBoard = document.createElement("span");
+        scoreBoard.style = "z-index: 9999; font: bold; color: #ffffff; line-height: 50px; font-size: 20px; text-align: left; user-select: none; top: 0px; position: absolute; margin-left: -220px; background-color: black; width: 200px; height: 85px; padding-left: 20px;";
+        scoreBoard.innerHTML = "Score: 0";
+        document.getElementsByClassName("dg main a")[0].appendChild(scoreBoard);
+    }
+}
+
+/**
+ * Function that update the scoreboard values.
+ * @param {*} newScore The new score to display.
+ */
+function updateScoreBoard(newScore) {
+    // If scoreboard does not exist create one.
+    if (!scoreBoard) {
+        setupScoreBoard();
+    }
+    scoreBoard.innerHTML = "Score: " + newScore;
 }
 
 /**
@@ -169,7 +232,9 @@ function createGame(gameData) {
  */
 function removeFallenBoxes() {
     for (box of gameBoxes) {
-        if (box.position.y < table.position.y - 20) {
+        if (box.position.y < table.position.y) {
+            // Clear the timer so that it will not calling impulse when box get removed.
+            box.stopImpulse();
             gameBoxes = gameBoxes.filter((e) => e != box);
             scene.remove(box);
         }
@@ -202,8 +267,11 @@ function mouseDownHandler(event) {
     let raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
     let intersects = raycaster.intersectObjects(gameBoxes);
     intersects.forEach((obj) => {
+        obj.object.stopImpulse();
         gameBoxes = gameBoxes.filter((e) => e != obj.object);
         scene.remove(obj.object);
+        currentScore += 1;
+        updateScoreBoard(currentScore);
     });
 }
 
@@ -234,7 +302,6 @@ function setupDatGui() {
     gui.add(controls, 'port', ports).name('Port').onChange((e) => { port = parseInt(e); readFile(port, filename); });
     gui.add(controls, 'resetGame').name('Reset Game');
 }
-
 /**
  * Reads the JSON file represented by filename on the given port to create the game.
  * 
@@ -262,14 +329,6 @@ function render() {
     // Rotates the whole scene.
     // if (controls.rotateScene) {
     //     scene.rotateY(controls.speed);
-    // }
-
-    // Rotates the wheel.
-    // if (controls.rotateWheel) {
-    //     container.rotateZ(controls.wheelSpeed);
-    //     for (let i = 0; i < baskets.length; i++) {
-    //         baskets[i].rotateZ(-controls.wheelSpeed);
-    //     }
     // }
 
     // removes fallen objects from the scene.
