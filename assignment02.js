@@ -40,6 +40,9 @@ const MASS = 10;
 const IMPULSE_INTERVAL = 1000; // in seconds
 let gameBoxes = [];
 let table;
+let possibleColors = [];
+let lastEliminatedBox;
+let scoreBoardColor;
 
 // GUI variables
 let filename = 'game01';
@@ -47,6 +50,7 @@ let port = 5500;
 
 // Scoreboard variables
 let scoreBoard;
+let scoreBoardColor;
 let currentScore = 0;
 
 /**
@@ -150,8 +154,9 @@ function createBox(boxData, index) {
         this.mesh.impulse = () => {
             // Only apply impulse if box is touching table.
             if (this.mesh.position.y - boxData.size / 2 <= table.position.y + TABLE_H / 2 + 0.1) {
+                let colorIndex = Math.floor(Math.random() * possibleColors.length);
                 // Apply random color.
-                this.mesh.material.color = new THREE.Color(Math.random(), Math.random(), Math.random());
+                this.mesh.material.color = new THREE.Color(parseInt(possibleColors[colorIndex]));
                 // Apply random upward force
                 this.mesh.applyCentralImpulse(new THREE.Vector3(0, Math.random() * 1000, 0));
             }
@@ -196,6 +201,10 @@ function createGame(gameData) {
             gameBoxes.push(box.mesh);
             // Add box mesh to the scene.
             scene.add(box.mesh);
+            // Check for possible color
+            if (!(possibleColors.indexOf(boxData.color) > -1)) {
+                possibleColors.push(boxData.color);
+            }
         }
     }
 
@@ -212,6 +221,11 @@ function setupScoreBoard() {
         scoreBoard.style = "z-index: 9999; font: bold; color: #ffffff; line-height: 50px; font-size: 20px; text-align: left; user-select: none; top: 0px; position: absolute; margin-left: -220px; background-color: black; width: 200px; height: 85px; padding-left: 20px;";
         scoreBoard.innerHTML = "Score: 0";
         document.getElementsByClassName("dg main a")[0].appendChild(scoreBoard);
+        scoreBoardColor = document.createElement("span");
+        scoreBoardColor.innerHTML = " ";
+        scoreBoardColor.style.width = 50;
+        scoreBoardColor.style.height = 50;
+        scoreBoard.appendChild(scoreBoardColor);
     }
 }
 
@@ -225,6 +239,18 @@ function updateScoreBoard(newScore) {
         setupScoreBoard();
     }
     scoreBoard.innerHTML = "Score: " + newScore;
+}
+
+/**
+ * Function that update the scoreboard color.
+ * @param {*} newColor The new color.
+ */
+function updateScoreBoardColor(newColor) {
+    // If scoreboard does not exist create one.
+    if (!scoreBoard) {
+        setupScoreBoard();
+    }
+    scoreBoardColor.style.background = "#" + newColor.getHexString();
 }
 
 /**
@@ -266,13 +292,47 @@ function mouseDownHandler(event) {
     let vector = pos.unproject(camera);
     let raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
     let intersects = raycaster.intersectObjects(gameBoxes);
-    intersects.forEach((obj) => {
-        obj.object.stopImpulse();
-        gameBoxes = gameBoxes.filter((e) => e != obj.object);
-        scene.remove(obj.object);
-        currentScore += 1;
-        updateScoreBoard(currentScore);
-    });
+
+    /** Get the first intersected object if there is any */
+    if (intersects.length > 0) {
+        let firstIntersect = intersects[0].object;
+        // If last elimated box exist
+        if (lastEliminatedBox) {
+            if (firstIntersect.material.color.equals(lastEliminatedBox.material.color)) {
+                // Stop timer
+                firstIntersect.stopImpulse();
+                // Remove the object
+                gameBoxes.splice(gameBoxes.lastIndexOf(firstIntersect), 1);
+                // Remove from scene
+                scene.remove(firstIntersect);
+                // Update score
+                currentScore += 1;
+                updateScoreBoard(currentScore);
+            }
+            // Reset Last Eliminated
+            lastEliminatedBox = null;
+        }
+        else {
+            // Stop timer
+            firstIntersect.stopImpulse();
+            // Remove the object
+            gameBoxes.splice(gameBoxes.lastIndexOf(firstIntersect), 1);
+            // Remove from scene
+            scene.remove(firstIntersect);
+            lastEliminatedBox = firstIntersect;
+            updateScoreBoardColor(lastEliminatedBox.material.color);
+        }
+    }
+
+    /** For list */
+    //intersects.forEach((obj) => {
+    //console.log(obj.object);
+    // obj.object.stopImpulse();
+    // gameBoxes = gameBoxes.filter((e) => e != obj.object);
+    // scene.remove(obj.object);
+    // currentScore += 1;
+    // updateScoreBoard(currentScore);
+    //});
 }
 
 /**
@@ -309,7 +369,7 @@ function setupDatGui() {
  * @param {*} filename The file name to be used.
  */
 function readFile(port, filename) {
-    let url = `http://127.0.0.1:${port}/assets/games/${filename}.json`;
+    let url = `http://localhost:${port}/assets/games/${filename}.json`;
     //console.log(url); //debugging code
     let request = new XMLHttpRequest();
     request.open('GET', url);
