@@ -38,20 +38,21 @@ const FRICTION = 0.3;
 const RESTITUTION = 0.7;
 const MASS = 10;
 const IMPULSE_INTERVAL = 1000; // in seconds
+const IMPULSE_FORCE = 1000;
 let gameBoxes = [];
 let table;
 let possibleColors = [];
 let lastEliminatedBox;
-let scoreBoardColor;
 
 // GUI variables
 let filename = 'game01';
-let port = 5500;
+let port = 3000;
 
 // Scoreboard variables
 let scoreBoard;
-let scoreBoardColor;
 let currentScore = 0;
+const SCORE_GAIN = 10;
+const SCORE_LOSE = 20;
 
 /**
  * Initialization function, which will initialize all the necessary components for the application.
@@ -75,7 +76,7 @@ function init() {
  * an ambient light, a directional light, and an hemisphere light set up.
  */
 function setupCameraAndLight() {
-    camera.position.set(0, 30, 90);
+    camera.position.set(0, 150, 210);
     camera.lookAt(scene.position);
 
     /**
@@ -158,7 +159,7 @@ function createBox(boxData, index) {
                 // Apply random color.
                 this.mesh.material.color = new THREE.Color(parseInt(possibleColors[colorIndex]));
                 // Apply random upward force
-                this.mesh.applyCentralImpulse(new THREE.Vector3(0, Math.random() * 1000, 0));
+                this.mesh.applyCentralImpulse(new THREE.Vector3(0, Math.random() * IMPULSE_FORCE, 0));
             }
         }
         // Impulse handle
@@ -196,7 +197,7 @@ function createGame(gameData) {
         for (boxData of gameData[i]) {
             const box = createBox(boxData, i);
             // Start impulse timer with IMPULSE_INTERVAL.
-            box.mesh.startImpulse(IMPULSE_INTERVAL);
+            //box.mesh.startImpulse(IMPULSE_INTERVAL);
             // Add box object to gameBoxes.
             gameBoxes.push(box.mesh);
             // Add box mesh to the scene.
@@ -212,20 +213,49 @@ function createGame(gameData) {
 }
 
 /**
+ * Replace all block with possible random color
+ */
+function paintRandomColor() {
+    gameBoxes.forEach((box) => {
+        let colorIndex = Math.floor(Math.random() * possibleColors.length);
+        // Apply random color.
+        box.material.color = new THREE.Color(parseInt(possibleColors[colorIndex]));
+    });
+}
+
+/**
+ * Check game condition
+ */
+function isGameOver() {
+    // Return true if less than 2 boxes left.
+    if (gameBoxes.length < 2) {
+        return true;
+    }
+    for (let i = 1; i < gameBoxes.length; i++) {
+        if (gameBoxes[0].material.color.equals(gameBoxes[i].material.color)) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
  * Function that add a scoreboard to canvas.
  */
 function setupScoreBoard() {
     scoreBoard = document.getElementById("scoreBoard");
     if (!scoreBoard) {
+        let scoreBoardPanel = document.createElement("div");
+        scoreBoardPanel.style = "z-index: 9999; font: bold; margin: 0px; padding: 0px; text-align: left; user-select: none; top: 0px; position: absolute; margin-left: -200px;  background-color: black; width: 200px;";
         scoreBoard = document.createElement("span");
-        scoreBoard.style = "z-index: 9999; font: bold; color: #ffffff; line-height: 50px; font-size: 20px; text-align: left; user-select: none; top: 0px; position: absolute; margin-left: -220px; background-color: black; width: 200px; height: 85px; padding-left: 20px;";
-        scoreBoard.innerHTML = "Score: 0";
-        document.getElementsByClassName("dg main a")[0].appendChild(scoreBoard);
-        scoreBoardColor = document.createElement("span");
-        scoreBoardColor.innerHTML = " ";
-        scoreBoardColor.style.width = 50;
-        scoreBoardColor.style.height = 50;
-        scoreBoard.appendChild(scoreBoardColor);
+        scoreBoard.style = " color: #ffffff; line-height: 50px; font-size: 20px; display: block; padding: 20px;";
+        scoreBoard.innerHTML = "Current Score: 0";
+        gameDescription = document.createElement("span");
+        gameDescription.style = "color: #ffffff; line-height: 15px; font-size: 10px; display: block; padding: 20px;";
+        gameDescription.innerHTML = "Click on 2 blocks with the same color to eliminate them." + "<br />" + "Eliminate block gives 10 points." + "<br />" + "Block falling off table takes away 10 points.";
+        scoreBoardPanel.appendChild(gameDescription);
+        scoreBoardPanel.appendChild(scoreBoard);
+        document.getElementsByClassName("dg main a")[0].appendChild(scoreBoardPanel);
+        
     }
 }
 
@@ -233,24 +263,12 @@ function setupScoreBoard() {
  * Function that update the scoreboard values.
  * @param {*} newScore The new score to display.
  */
-function updateScoreBoard(newScore) {
+function updateScoreBoard() {
     // If scoreboard does not exist create one.
     if (!scoreBoard) {
         setupScoreBoard();
     }
-    scoreBoard.innerHTML = "Score: " + newScore;
-}
-
-/**
- * Function that update the scoreboard color.
- * @param {*} newColor The new color.
- */
-function updateScoreBoardColor(newColor) {
-    // If scoreboard does not exist create one.
-    if (!scoreBoard) {
-        setupScoreBoard();
-    }
-    scoreBoardColor.style.background = "#" + newColor.getHexString();
+    scoreBoard.innerHTML = "Current Score: " + currentScore;
 }
 
 /**
@@ -263,6 +281,8 @@ function removeFallenBoxes() {
             box.stopImpulse();
             gameBoxes = gameBoxes.filter((e) => e != box);
             scene.remove(box);
+            currentScore -= SCORE_LOSE;
+            updateScoreBoard();
         }
     }
 }
@@ -299,28 +319,30 @@ function mouseDownHandler(event) {
         // If last elimated box exist
         if (lastEliminatedBox) {
             if (firstIntersect.material.color.equals(lastEliminatedBox.material.color)) {
-                // Stop timer
-                firstIntersect.stopImpulse();
                 // Remove the object
                 gameBoxes.splice(gameBoxes.lastIndexOf(firstIntersect), 1);
+                gameBoxes.splice(gameBoxes.lastIndexOf(lastEliminatedBox), 1);
                 // Remove from scene
                 scene.remove(firstIntersect);
+                scene.remove(lastEliminatedBox);
                 // Update score
-                currentScore += 1;
-                updateScoreBoard(currentScore);
+                currentScore += SCORE_GAIN;
+                if (isGameOver()) {
+                    console.log("no block left");
+                    console.log(gameBoxes.length);
+                    console.log("game over");
+                }
+                else {
+                    
+                    paintRandomColor();
+                }
             }
             // Reset Last Eliminated
             lastEliminatedBox = null;
+            updateScoreBoard();
         }
         else {
-            // Stop timer
-            firstIntersect.stopImpulse();
-            // Remove the object
-            gameBoxes.splice(gameBoxes.lastIndexOf(firstIntersect), 1);
-            // Remove from scene
-            scene.remove(firstIntersect);
             lastEliminatedBox = firstIntersect;
-            updateScoreBoardColor(lastEliminatedBox.material.color);
         }
     }
 
@@ -346,7 +368,7 @@ function setupDatGui() {
         'Game 4': 'game04',
         'Game 5': 'game05'
     };
-    const ports = [5500, 8080]
+    const ports = [3000, 5500, 8080]
 
     // DAT.GUI Controls.
     const controls = new function () {
