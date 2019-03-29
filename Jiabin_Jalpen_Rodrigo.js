@@ -45,7 +45,7 @@ let possibleColors = [];
 let lastEliminatedBox;
 
 // GUI variables
-let filename = 'game01';
+let filename = 'Jiabin_Jalpen_Rodrigo1';
 let port = 3000;
 
 // Scoreboard variables
@@ -362,11 +362,11 @@ function mouseDownHandler(event) {
  */
 function setupDatGui() {
     const gameFiles = {
-        'Game 1': 'game01',
-        'Game 2': 'game02',
-        'Game 3': 'game03',
-        'Game 4': 'game04',
-        'Game 5': 'game05'
+        'Game 1': 'Jiabin_Jalpen_Rodrigo1',
+        'Game 2': 'Jiabin_Jalpen_Rodrigo2',
+        'Game 3': 'Jiabin_Jalpen_Rodrigo3',
+        'Game 4': 'Jiabin_Jalpen_Rodrigo4',
+        'Game 5': 'Jiabin_Jalpen_Rodrigo5'
     };
     const ports = [3000, 5500, 8080]
 
