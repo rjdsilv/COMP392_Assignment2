@@ -38,7 +38,7 @@ const FRICTION = 0.3;
 const RESTITUTION = 0.7;
 const MASS = 10;
 const IMPULSE_INTERVAL = 1000; // in seconds
-const IMPULSE_FORCE = 1000;
+const IMPULSE_FORCE = 500;
 let gameBoxes = [];
 let table;
 let possibleColors = [];
@@ -53,7 +53,7 @@ let scoreBoard;
 let colorIndicator;
 let currentScore = 0;
 const SCORE_GAIN = 10;
-const SCORE_LOSE = 20;
+const SCORE_LOSE = 10;
 
 /**
  * Initialization function, which will initialize all the necessary components for the application.
@@ -193,6 +193,7 @@ function createGame(gameData) {
     }
     gameBoxes = [];
     currentScore = 0;
+    updateScoreBoard();
 
     for (let i = 0; i < gameData.length; i++) {
         for (boxData of gameData[i]) {
@@ -260,7 +261,7 @@ function setupScoreBoard() {
         scoreBoard.innerHTML = "Current Score: 0";
         gameDescription = document.createElement("span");
         gameDescription.style = "color: #ffffff; line-height: 15px; font-size: 10px; display: block; padding: 20px;";
-        gameDescription.innerHTML = "Click on 2 blocks with the same color to eliminate them." + "<br /><br />" + "Eliminate block: +10 points." + "<br /><br />" + "Block falling off table: -10 points." + "<br /><br />" + "Click a block will show the color below";
+        gameDescription.innerHTML = "Click on 2 blocks with the same color to eliminate them." + "<br /><br />" + "Becareful! Click the wrong block will shake the table." + "<br /><br />" + "Eliminate block: +10 points." + "<br /><br />" + "Block falling off table: -10 points." + "<br /><br />" + "Click a block will show the color of the block you just clicked(see below)";
         colorIndicator = document.createElement('div');
         if (lastClickedBox) {
             colorIndicator.style = "height: 20px; backgroundColor: " + lastClickedBox.material.color.getHexString() + ";";
@@ -343,18 +344,21 @@ function mouseDownHandler(event) {
                 scene.remove(lastClickedBox);
                 // Update score
                 currentScore += SCORE_GAIN;
-                if (isGameOver()) {
-                    console.log(gameBoxes.length);
-                    console.log("game over");
-                }
-                else {
-                    
-                    paintRandomColor();
-                }
+            }
+            else{
+                gameBoxes.forEach((box) => {
+                    box.impulse();
+                })
             }
             // Reset Last Eliminated
             lastClickedBox = null;
             updateScoreBoard();
+            if (isGameOver()) {
+                scoreBoard.innerHTML = "Game Over! <br />Click reset to restart<br />Your score: " + currentScore;
+            }
+            else {
+                paintRandomColor();
+            }
         }
         else {
             lastClickedBox = firstIntersect;
