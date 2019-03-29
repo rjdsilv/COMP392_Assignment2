@@ -42,7 +42,7 @@ const IMPULSE_FORCE = 1000;
 let gameBoxes = [];
 let table;
 let possibleColors = [];
-let lastEliminatedBox;
+let lastClickedBox;
 
 // GUI variables
 let filename = 'game01';
@@ -50,6 +50,7 @@ let port = 3000;
 
 // Scoreboard variables
 let scoreBoard;
+let colorIndicator;
 let currentScore = 0;
 const SCORE_GAIN = 10;
 const SCORE_LOSE = 20;
@@ -239,23 +240,30 @@ function isGameOver() {
     return true;
 }
 /**
- * Function that add a scoreboard to canvas.
+ * Function that inject a scoreboard to html.
  */
 function setupScoreBoard() {
     scoreBoard = document.getElementById("scoreBoard");
     if (!scoreBoard) {
         let scoreBoardPanel = document.createElement("div");
-        scoreBoardPanel.style = "z-index: 9999; font: bold; margin: 0px; padding: 0px; text-align: left; user-select: none; top: 0px; position: absolute; margin-left: -200px;  background-color: black; width: 200px;";
+        scoreBoardPanel.style = "z-index: 9999; font: bold; margin: 0px; padding: 0px; text-align: left; user-select: none; top: 0px; position: absolute; margin-left: -250px;  background-color: black; width: 250px;";
         scoreBoard = document.createElement("span");
-        scoreBoard.style = " color: #ffffff; line-height: 50px; font-size: 20px; display: block; padding: 20px;";
+        scoreBoard.style = " color: #ffffff; line-height: 50px; font-size: 18px; display: block; padding: 0px 20px;";
         scoreBoard.innerHTML = "Current Score: 0";
         gameDescription = document.createElement("span");
         gameDescription.style = "color: #ffffff; line-height: 15px; font-size: 10px; display: block; padding: 20px;";
-        gameDescription.innerHTML = "Click on 2 blocks with the same color to eliminate them." + "<br />" + "Eliminate block gives 10 points." + "<br />" + "Block falling off table takes away 10 points.";
+        gameDescription.innerHTML = "Click on 2 blocks with the same color to eliminate them." + "<br /><br />" + "Eliminate block: +10 points." + "<br /><br />" + "Block falling off table: -10 points." + "<br /><br />" + "Click a block will show the color below";
+        colorIndicator = document.createElement('div');
+        if (lastClickedBox) {
+            colorIndicator.style = "height: 20px; backgroundColor: " + lastClickedBox.material.color.getHexString() + ";";
+        }
+        else {
+            colorIndicator.style = "height: 20px; backgroundColor: " + "#ffffff";
+        }
         scoreBoardPanel.appendChild(gameDescription);
+        scoreBoardPanel.appendChild(colorIndicator);
         scoreBoardPanel.appendChild(scoreBoard);
         document.getElementsByClassName("dg main a")[0].appendChild(scoreBoardPanel);
-        
     }
 }
 
@@ -317,14 +325,18 @@ function mouseDownHandler(event) {
     if (intersects.length > 0) {
         let firstIntersect = intersects[0].object;
         // If last elimated box exist
-        if (lastEliminatedBox) {
-            if (firstIntersect.material.color.equals(lastEliminatedBox.material.color)) {
+        if (lastClickedBox) {
+            // Return if user click same block
+            if (lastClickedBox === firstIntersect) {
+                return;
+            }
+            if (firstIntersect.material.color.equals(lastClickedBox.material.color)) {
                 // Remove the object
                 gameBoxes.splice(gameBoxes.lastIndexOf(firstIntersect), 1);
-                gameBoxes.splice(gameBoxes.lastIndexOf(lastEliminatedBox), 1);
+                gameBoxes.splice(gameBoxes.lastIndexOf(lastClickedBox), 1);
                 // Remove from scene
                 scene.remove(firstIntersect);
-                scene.remove(lastEliminatedBox);
+                scene.remove(lastClickedBox);
                 // Update score
                 currentScore += SCORE_GAIN;
                 if (isGameOver()) {
@@ -333,16 +345,18 @@ function mouseDownHandler(event) {
                     console.log("game over");
                 }
                 else {
-                    
                     paintRandomColor();
                 }
             }
             // Reset Last Eliminated
-            lastEliminatedBox = null;
+            lastClickedBox = null;
             updateScoreBoard();
         }
         else {
-            lastEliminatedBox = firstIntersect;
+            lastClickedBox = firstIntersect;
+            if (colorIndicator) {
+                colorIndicator.style.backgroundColor = "#" + lastClickedBox.material.color.getHexString();
+            }
         }
     }
 
