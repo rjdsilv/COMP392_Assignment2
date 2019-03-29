@@ -232,7 +232,7 @@ function isGameOver() {
         return true;
     }
     const colorMap = new Map();
-    for (let i = 1; i < gameBoxes.length; i++) {
+    for (let i = 0; i < gameBoxes.length; i++) {
         const color = gameBoxes[i].material.color;
         const key = `${color.r}_${color.g}_${color.b}`;
 
