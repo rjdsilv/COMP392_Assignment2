@@ -325,7 +325,7 @@ function mouseDownHandler(event) {
     if (intersects.length > 0) {
         let firstIntersect = intersects[0].object;
         // If last elimated box exist
-        if (lastEliminatedBox) {
+        if (lastEliminatedBox && lastEliminatedBox.uuid !== firstIntersect.uuid) {
             if (firstIntersect.material.color.equals(lastEliminatedBox.material.color)) {
                 // Remove the object
                 gameBoxes.splice(gameBoxes.lastIndexOf(firstIntersect), 1);
